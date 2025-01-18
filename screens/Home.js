@@ -23,7 +23,6 @@ import * as Location from 'expo-location'
 import axios from 'axios'
 import SkeletonLoader from './SkeletonLoader'
 import Skeleton from './SkeletonLoaderP'
-import { useBookmarks } from '../components/BookmarkContext'
 
 const Home = ({ navigation }) => {
     const [image, setImage] = useState(images.user1)
@@ -44,7 +43,6 @@ const Home = ({ navigation }) => {
     const typeFlatListRef = useRef(null)
     const [isLoading, setIsLoading] = useState(true)
     const [propertyTypeLoading, setPropertyTypeLoading] = useState(true)
-    const { bookmarks, toggleBookmark } = useBookmarks()
     const [currentPage, setCurrentPage] = useState(1) // Start from page 1
     const [hasMore, setHasMore] = useState(true) // Determine if more posts are available
 
@@ -370,8 +368,6 @@ const Home = ({ navigation }) => {
             category={item.property_type || 'Unknown'}
             price={item.property_meta.fave_property_price[0] || 'Not Available'}
             location={capitalizeFirstLetter(item.property_city) || 'Unknown'}
-            isBookmarked={bookmarks.some((b) => b.id === property.id)}
-            onBookmarkToggle={() => toggleBookmark(property)}
             onPress={() =>
                 navigation.navigate('CourseDetailsMore', {
                     property: item,

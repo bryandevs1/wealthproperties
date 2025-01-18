@@ -52,6 +52,7 @@ import BottomTabNavigation from './BottomTabNavigation'
 import SettingsPayment from '../screens/SettingsPayment'
 import AddPostScreen from '../screens/AddNewScreen'
 import TermsOfService from '../screens/Terms'
+import * as Sentry from '@sentry/react-native'
 
 const Stack = createNativeStackNavigator()
 
@@ -67,14 +68,26 @@ const AppNavigation = () => {
                     await AsyncStorage.getItem('alreadyLaunched')
                 const userToken = await AsyncStorage.getItem('userToken') // Check if user is logged in
 
+                let route = 'Onboarding1' // Default route
                 if (alreadyLaunched === null) {
                     await AsyncStorage.setItem('alreadyLaunched', 'true')
-                    setInitialRoute('Onboarding1') // Navigate to Onboarding screens on first launch
+                    route = 'Onboarding1' // Navigate to Onboarding screens on first launch
                 } else if (userToken) {
-                    setInitialRoute('Main') // Navigate to Main screen if logged in
+                    route = 'Main' // Navigate to Main screen if logged in
                 } else {
-                    setInitialRoute('Onboarding1') // Navigate to Login screen otherwise
+                    route = 'Onboarding1' // Navigate to Login screen otherwise
                 }
+
+                // Log the initial route and send to Sentry
+                console.log('Determined Initial Route:', route)
+                Sentry.captureMessage('App started successfully', {
+                    level: 'info',
+                    extra: {
+                        initialRoute: route,
+                    },
+                })
+
+                setInitialRoute(route)
             } catch (error) {
                 console.error('Error determining initial route:', error)
                 setInitialRoute('Login') // Fallback to Login in case of an error
@@ -91,7 +104,18 @@ const AppNavigation = () => {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer
+            onStateChange={(state) => {
+                console.log('State object:', state) // Debugging state object
+
+                if (state) {
+                    const currentScreen = state.routes?.[state.index]?.name
+                    console.log(`Navigated to: ${currentScreen}`) // Expected log
+                } else {
+                    console.warn('No state available in onStateChange.')
+                }
+            }}
+        >
             <Stack.Navigator
                 screenOptions={{ headerShown: false }}
                 initialRouteName={initialRoute}
@@ -201,7 +225,9 @@ const AppNavigation = () => {
                     options={{
                         presentation: 'transparentModal',
                         headerShown: false,
-                        cardStyle: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+                        cardStyle: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        },
                     }}
                 />
                 <Stack.Screen name="TopMentors" component={TopMentors} />
@@ -234,4 +260,4 @@ const AppNavigation = () => {
     )
 }
 
-export default AppNavigation
+export default Sentry.wrap(AppNavigation)

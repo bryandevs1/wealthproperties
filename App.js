@@ -1,21 +1,24 @@
 import * as SplashScreen from 'expo-splash-screen'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { FONTS } from './constants/fonts'
 import AppNavigation from './navigations/AppNavigation'
-import { LogBox } from 'react-native'
+import { LogBox, View, Text } from 'react-native'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { BookmarkProvider } from './components/BookmarkContext'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Sentry from '@sentry/react-native'
-import * as Location from 'expo-location'
-import * as Camera from 'expo-camera'
+import { ErrorBoundary } from '@sentry/react-native'
 
 Sentry.init({
     dsn: 'https://a712da57dd7f6ed2482750da9f5e8bc6@o4508652891144192.ingest.us.sentry.io/4508652933218304',
     tracesSampleRate: 1.0,
-    profilesSampleRate: 1.0,
+    debug: true, // Enable debug logs for Sentry
+    beforeBreadcrumb: (breadcrumb) => {
+        // Optional: Filter or modify breadcrumbs here
+        console.log('Sentry Breadcrumb:', breadcrumb) // Debugging breadcrumbs
+        return breadcrumb
+    },
 })
 
 LogBox.ignoreAllLogs()
@@ -24,60 +27,55 @@ SplashScreen.preventAutoHideAsync()
 
 export default function App() {
     const [fontsLoaded] = useFonts(FONTS)
-    const [locationPermissionGranted, setLocationPermissionGranted] =
-        useState(false)
-    const [cameraPermissionGranted, setCameraPermissionGranted] =
-        useState(false)
-
-    const requestPermissions = async () => {
-        // Request Camera Permission
-        const { status: cameraStatus } =
-            await Camera.requestCameraPermissionsAsync()
-        setCameraPermissionGranted(cameraStatus === 'granted')
-
-        // Request Location Permission
-        const { status: locationStatus } =
-            await Location.requestForegroundPermissionsAsync()
-        setLocationPermissionGranted(locationStatus === 'granted')
-    }
 
     const onLayoutRootView = useCallback(async () => {
-        if (
-            fontsLoaded &&
-            locationPermissionGranted &&
-            cameraPermissionGranted
-        ) {
+        if (fontsLoaded) {
+            console.log('Hiding SplashScreen') // Log for SplashScreen hiding
             await SplashScreen.hideAsync()
         }
-    }, [fontsLoaded, locationPermissionGranted, cameraPermissionGranted])
+    }, [fontsLoaded])
 
     useEffect(() => {
-        const initializeSettings = async () => {
-            const faceIDEnabled = await AsyncStorage.getItem('faceIDEnabled')
-            console.log('Face ID Enabled:', faceIDEnabled === 'true')
+        if (fontsLoaded) {
+            console.log('Fonts have loaded.') // Log when fonts are loaded
+            SplashScreen.hideAsync()
         }
-        initializeSettings()
+    }, [fontsLoaded])
 
-        // Request permissions as soon as the app is opened
-        requestPermissions()
+    useEffect(() => {
+        console.log('App has started.') // Log when app starts
+        Sentry.addBreadcrumb({
+            category: 'App',
+            message: 'App has started.',
+            level: 'info',
+        })
     }, [])
 
-    // Check if fonts are loaded and permissions are granted
-    if (
-        !fontsLoaded ||
-        !locationPermissionGranted ||
-        !cameraPermissionGranted
-    ) {
-        return null
+    if (!fontsLoaded) {
+        console.log('Fonts are not loaded yet, showing loading screen.') // Log while loading fonts
+        return (
+            <View>
+                <Text>Loading...</Text>
+            </View>
+        )
     }
+    console.log('Rendering AppNavigation') // Log to confirm AppNavigation is rendering
 
     return (
         <ThemeProvider>
-            <SafeAreaProvider onLayout={onLayoutRootView}>
-                <BookmarkProvider>
+            <ErrorBoundary
+                fallback={
+                    <View>
+                        <Text>An error occurred.</Text>
+                    </View>
+                }
+            >
+                <SafeAreaProvider onLayout={onLayoutRootView}>
+                    {console.log('Rendering AppNavigation')}{' '}
+                    {/* Log for rendering navigation */}
                     <AppNavigation />
-                </BookmarkProvider>
-            </SafeAreaProvider>
+                </SafeAreaProvider>
+            </ErrorBoundary>
         </ThemeProvider>
     )
 }
